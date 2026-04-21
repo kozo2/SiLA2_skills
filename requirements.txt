@@ -1,0 +1,10 @@
+# Runtime dependencies for scripts/ (SiLA2 client + discovery).
+# All other modules used are in the Python standard library.
+#
+# Install with uv:
+#   uv pip install -r scripts/requirements.txt
+#
+# Or run ad hoc without activating a venv:
+#   uv run --with-requirements scripts/requirements.txt python scripts/<name>.py ...
+
+sila2>=0.14.0

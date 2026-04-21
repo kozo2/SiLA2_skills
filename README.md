@@ -80,9 +80,48 @@ uv run python scripts/list_operations.py 127.0.0.1 50052 --include-core
 uv run python scripts/list_operations.py 127.0.0.1 50052 --json
 ```
 
+## run_protocol.py
+
+Executes a demo plate-processing protocol that chains commands from four of
+the docker-compose servers, using the Commands identified by
+`list_operations.py`:
+
+1. **Seal** — `PlateLocController.StartCycle`
+2. **Thermal run** — `AutomatedThermalCyclerController.Load` → `Validate`
+   → `CloseLid` → `StartRun`
+3. **Centrifuge** — `MicroplateCentrifugeController.SpinCycle`
+4. **Peel** — `AutomatedPlateSealRemoverController.Peel`
+
+Endpoints default to the compose ports (`plateloc=50053`,
+`thermal-cycler=50055`, `centrifuge=50052`, `seal-remover=50054` on
+`127.0.0.1`); each is overridable with `--<role> host:port`.
+
+```sh
+# Run with defaults
+uv run python scripts/run_protocol.py
+
+# Override endpoints and tune parameters
+uv run python scripts/run_protocol.py \
+  --plateloc 127.0.0.1:50053 \
+  --thermal-cycler 127.0.0.1:50055 \
+  --centrifuge 127.0.0.1:50052 \
+  --seal-remover 127.0.0.1:50054 \
+  --spin-time 60 --spin-velocity 90 \
+  --peel-location 3 --adhesion-time 3
+```
+
+Known mock-server caveat: every observable command's `finally` calls a
+non-existent `instance.complete()`, which makes the client's `get_responses()`
+raise. The script polls `instance.done` instead and tolerates a terminal
+`finishedWithError` status — side effects still run, so each step logs
+`status=finishedWithError` but the protocol advances correctly. By the same
+token, `SetSealingTemperature` / `SetSealingTime` are skipped by default
+(enable with `--configure-sealing` if the server is fixed).
+
 ## Typical workflow
 
 1. `scan_sila_servers.py` — find which servers are live on the network.
 2. `check_sila_server.py <ip> <port>` — confirm a specific server is reachable.
 3. `list_operations.py <ip> <port>` — see what commands/properties it exposes.
 4. `fetch_feature_xml.py` — dump the raw Feature XML for offline inspection.
+5. `run_protocol.py` — chain those commands into an end-to-end protocol.
